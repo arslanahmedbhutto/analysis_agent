@@ -23,5 +23,5 @@ if %ERRORLEVEL% NEQ 0 (
 echo.
 echo [2/2] Launching Streamlit Web Application...
 echo.
-python -m streamlit run app.py
+python -m streamlit run app.py --server.port 8502
 pause
