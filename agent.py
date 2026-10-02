@@ -1,0 +1,247 @@
+"""
+Multi-Provider Custom Coding Analysis Agent.
+Supports Local Ollama (100% Free & Offline, No API key needed),
+Groq, Google Gemini, OpenAI, and LM Studio / Custom Local models.
+"""
+
+import os
+import re
+import json
+from typing import Dict, Any, List, Optional
+import requests
+import pandas as pd
+from openai import OpenAI
+from groq import Groq
+from executor import execute_analysis_code, ExecutionResult
+
+
+def get_ollama_models(host: str = "http://localhost:11434") -> List[str]:
+    """Attempts to fetch currently installed models from local Ollama instance."""
+    try:
+        resp = requests.get(f"{host}/api/tags", timeout=1.5)
+        if resp.status_code == 200:
+            data = resp.json()
+            return [m["name"] for m in data.get("models", [])]
+    except Exception:
+        pass
+    return []
+
+
+def is_ollama_running(host: str = "http://localhost:11434") -> bool:
+    """Checks if local Ollama daemon is active and responding."""
+    try:
+        resp = requests.get(f"{host}/api/tags", timeout=1.0)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
+def get_dataframe_schema(df: pd.DataFrame) -> str:
+    """Extracts a structural summary of the DataFrame to guide the LLM."""
+    rows, cols = df.shape
+    col_info = []
+    for col in df.columns:
+        dtype = str(df[col].dtype)
+        null_count = int(df[col].isnull().sum())
+        nunique = int(df[col].nunique())
+        
+        if pd.api.types.is_numeric_dtype(df[col]):
+            sample_val = f"min: {df[col].min()}, max: {df[col].max()}"
+        else:
+            top_vals = [str(x) for x in df[col].dropna().unique()[:3]]
+            sample_val = f"samples: {', '.join(top_vals)}"
+            
+        col_info.append(f"- `{col}` ({dtype}): {null_count} nulls, {nunique} unique values. {sample_val}")
+    
+    col_summary_str = "\n".join(col_info)
+    head_preview = df.head(3).to_string(index=False)
+    
+    schema_text = f"""### Dataset Overview:
+- Total Rows: {rows:,}
+- Total Columns: {cols:,}
+
+### Columns & Types:
+{col_summary_str}
+
+### Sample Rows (First 3 rows only for reference):
+```
+{head_preview}
+```
+"""
+    return schema_text
+
+
+class DataAnalysisAgent:
+    def __init__(
+        self,
+        provider: str = "Local (Ollama)",
+        model: str = "llama3.1",
+        api_key: str = "",
+        custom_base_url: str = ""
+    ):
+        self.provider = provider
+        self.model = model
+        self.api_key = api_key
+        
+        # Initialize appropriate client
+        if provider == "Local (Ollama)":
+            base_url = custom_base_url or "http://localhost:11434/v1"
+            self.client = OpenAI(base_url=base_url, api_key="ollama")
+        elif provider == "Groq":
+            self.client = Groq(api_key=api_key)
+        elif provider == "Google Gemini":
+            base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+            self.client = OpenAI(base_url=base_url, api_key=api_key)
+        elif provider == "OpenAI":
+            self.client = OpenAI(api_key=api_key)
+        elif provider == "LM Studio / Custom Local":
+            base_url = custom_base_url or "http://localhost:1234/v1"
+            self.client = OpenAI(base_url=base_url, api_key="lm-studio")
+        else:
+            self.client = OpenAI(api_key=api_key or "dummy")
+
+    def _extract_python_code(self, response_text: str) -> Optional[str]:
+        """Extracts python code block from model response."""
+        pattern = r"```(?:python)?\s*\n(.*?)```"
+        matches = re.findall(pattern, response_text, re.DOTALL)
+        if matches:
+            return max(matches, key=len).strip()
+        if "df." in response_text or "plt." in response_text or "print(" in response_text:
+            return response_text.strip()
+        return None
+
+    def run_analysis(
+        self,
+        query: str,
+        df: pd.DataFrame,
+        chat_history: Optional[List[Dict[str, str]]] = None,
+        max_retries: int = 2
+    ) -> Dict[str, Any]:
+        """
+        Executes autonomous code generation, execution, and self-healing analysis.
+        """
+        schema_text = get_dataframe_schema(df)
+        
+        system_prompt = f"""You are an Expert Data Scientist and Python Data Analysis Agent.
+You are given a pandas DataFrame named `df` with {len(df):,} rows.
+
+{schema_text}
+
+CRITICAL RULES:
+1. The DataFrame `df` is ALREADY LOADED in memory with all {len(df):,} rows.
+   NEVER re-create `df = pd.DataFrame(...)` or mock sample data.
+2. ALWAYS write Python code (`pandas`, `numpy`, `matplotlib.pyplot`, `seaborn`) to compute answers.
+3. Print key figures, summary statistics, and tables clearly using `print(...)` so they are captured.
+4. If a chart or graph is requested or helpful:
+   - Use `plt.figure(figsize=(10, 5))` or `sns...` with clean styling (`sns.set_theme(style='whitegrid')`).
+   - Add clear titles, axis labels, legends, and call `plt.tight_layout()`.
+   - Do NOT call `plt.show()`, the environment automatically captures the active figure.
+5. Format your response strictly with:
+   - A brief 1-2 sentence thought/plan.
+   - The executable code inside a ```python ``` block.
+"""
+
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        if chat_history:
+            for msg in chat_history[-4:]:
+                messages.append({"role": msg["role"], "content": msg["content"]})
+                
+        messages.append({"role": "user", "content": query})
+
+        executed_code = ""
+        exec_result: Optional[ExecutionResult] = None
+        attempts = 0
+
+        while attempts <= max_retries:
+            attempts += 1
+            try:
+                completion = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=0.1,
+                    max_tokens=2048,
+                )
+                raw_response = completion.choices[0].message.content or ""
+            except Exception as api_err:
+                error_str = str(api_err)
+                if "connection" in error_str.lower() and self.provider == "Local (Ollama)":
+                    return {
+                        "code": None,
+                        "stdout": None,
+                        "error": error_str,
+                        "figure": None,
+                        "image_bytes": None,
+                        "analysis": "❌ **Could not connect to Ollama.**\n\nPlease ensure Ollama is installed and running (`ollama serve` or `ollama run <model>`).",
+                        "success": False,
+                        "attempts": attempts,
+                    }
+                raise api_err
+
+            code = self._extract_python_code(raw_response)
+
+            if not code:
+                return {
+                    "code": None,
+                    "stdout": None,
+                    "error": None,
+                    "figure": None,
+                    "image_bytes": None,
+                    "analysis": raw_response,
+                    "success": True,
+                    "attempts": attempts,
+                }
+
+            executed_code = code
+            exec_result = execute_analysis_code(code, df)
+
+            if exec_result.success:
+                break
+            else:
+                if attempts <= max_retries:
+                    messages.append({"role": "assistant", "content": f"```python\n{code}\n```"})
+                    messages.append({
+                        "role": "user",
+                        "content": f"The code resulted in an error:\n{exec_result.error}\nPlease fix the error and provide the updated Python code in ```python```."
+                    })
+
+        # Synthesize Executive Analysis
+        final_summary = ""
+        if exec_result and exec_result.success:
+            synthesis_prompt = f"""You are an elite Business Intelligence Analyst.
+User Question: "{query}"
+
+Execution Output from Data Code:
+{exec_result.stdout if exec_result.stdout else "Code executed successfully without text output."}
+
+Has visual chart generated: {"Yes" if exec_result.figure is not None else "No"}
+
+Provide a clear, executive, well-structured answer to the user:
+- Directly answer the question with exact numbers/percentages from the output.
+- Highlight 2-3 key takeaways or business insights.
+- Provide actionable recommendations if relevant.
+- Keep it concise, professional, and formatted in clean markdown bullet points.
+"""
+            try:
+                synth_resp = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": synthesis_prompt}],
+                    temperature=0.2,
+                    max_tokens=1024,
+                )
+                final_summary = synth_resp.choices[0].message.content or ""
+            except Exception:
+                final_summary = exec_result.stdout or "Analysis complete."
+        else:
+            final_summary = f"⚠️ Could not execute analysis after {attempts} attempts.\n\n**Error:**\n```\n{exec_result.error if exec_result else 'Unknown error'}\n```"
+
+        return {
+            "code": executed_code,
+            "stdout": exec_result.stdout if exec_result else "",
+            "error": exec_result.error if exec_result and not exec_result.success else None,
+            "figure": exec_result.figure if exec_result else None,
+            "image_bytes": exec_result.image_bytes if exec_result else None,
+            "analysis": final_summary,
+            "success": exec_result.success if exec_result else False,
+            "attempts": attempts,
+        }
