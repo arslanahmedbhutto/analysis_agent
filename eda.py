@@ -148,3 +148,4 @@ def run_automated_eda(df: pd.DataFrame) -> Dict[str, Any]:
         "outlier_summary": outlier_summary,
         "insights": insights,
     }
+

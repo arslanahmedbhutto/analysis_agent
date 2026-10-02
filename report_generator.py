@@ -201,3 +201,4 @@ def generate_executive_html_report(dataset_name: str, df: pd.DataFrame, messages
 </html>
 """
     return html_template
+

@@ -361,10 +361,24 @@ with st.sidebar:
         except Exception as e:
             st.error(f"Error loading file: {e}")
             
-    if st.button("🧪 Load Sample E-Commerce (500 Rows)", use_container_width=True):
-        st.session_state.df = generate_sample_ecommerce_data()
-        st.session_state.dataset_name = "Pakistan_Ecommerce_Sales (500 orders)"
-        st.success("Loaded sample dataset!")
+    st.markdown("##### 🧪 Or Pick a Curated Dataset:")
+    sample_options = {
+        "🇵🇰 Pakistan E-Commerce (500 rows)": ("synthetic", "Pakistan_Ecommerce_Sales (500 orders)"),
+        "🏬 Retail Store Sales & Marketing (400 rows)": ("sample_datasets/carseats_retail_sales.csv", "Retail_Store_Sales_Marketing"),
+        "📞 IBM Telco Customer Churn (7,043 rows)": ("sample_datasets/telco_customer_churn.csv", "Telco_Customer_Churn"),
+        "🌍 Gapminder Global GDP & Life (1,704 rows)": ("sample_datasets/gapminder_global_trends.csv", "Gapminder_Global_GDP"),
+        "📈 Apple Stock Financial History (506 rows)": ("sample_datasets/apple_stock_finance.csv", "Apple_Stock_Financial_Trends"),
+        "🚢 Titanic Passenger Survival (891 rows)": ("sample_datasets/titanic_survival.csv", "Titanic_Passenger_Survival"),
+    }
+    selected_sample = st.selectbox("Curated Dataset", options=list(sample_options.keys()), index=0)
+    if st.button("🚀 Load Selected Dataset", use_container_width=True):
+        source_path, label = sample_options[selected_sample]
+        if source_path == "synthetic":
+            st.session_state.df = generate_sample_ecommerce_data()
+        else:
+            st.session_state.df = pd.read_csv(source_path)
+        st.session_state.dataset_name = label
+        st.rerun()
 
     st.markdown("---")
     
@@ -452,14 +466,39 @@ if st.session_state.df is None:
     </div>
     """, unsafe_allow_html=True)
     
-    col_demo1, col_demo2 = st.columns([1, 1])
+    col_demo1, col_demo2 = st.columns([1.2, 1])
     with col_demo1:
-        st.markdown("### 🧪 Quick 1-Click Demo")
-        st.markdown("Test the agent immediately using the pre-configured **500-order Pakistani e-commerce dataset** (Karachi, Lahore, Islamabad, product categories, prices, units, and revenues).")
-        if st.button("🚀 Load 500-Order E-Commerce Dataset Now", type="primary", use_container_width=True):
-            st.session_state.df = generate_sample_ecommerce_data()
-            st.session_state.dataset_name = "Pakistan_Ecommerce_Sales (500 orders)"
-            st.rerun()
+        st.markdown("### 🧪 Quick 1-Click Datasets (No Upload Needed)")
+        st.markdown("Select any curated industry dataset below to test the agent immediately:")
+        
+        btn_c1, btn_c2 = st.columns(2)
+        with btn_c1:
+            if st.button("🇵🇰 Pakistan E-Commerce (500)", use_container_width=True, type="primary"):
+                st.session_state.df = generate_sample_ecommerce_data()
+                st.session_state.dataset_name = "Pakistan_Ecommerce_Sales (500 orders)"
+                st.rerun()
+            if st.button("📞 Telco Churn (7,043 rows)", use_container_width=True):
+                st.session_state.df = pd.read_csv("sample_datasets/telco_customer_churn.csv")
+                st.session_state.dataset_name = "Telco_Customer_Churn (7,043 customers)"
+                st.rerun()
+            if st.button("📈 Apple Stock Finance (506)", use_container_width=True):
+                st.session_state.df = pd.read_csv("sample_datasets/apple_stock_finance.csv")
+                st.session_state.dataset_name = "Apple_Stock_Financial_Trends (506 days)"
+                st.rerun()
+
+        with btn_c2:
+            if st.button("🏬 Retail Store Sales (400)", use_container_width=True):
+                st.session_state.df = pd.read_csv("sample_datasets/carseats_retail_sales.csv")
+                st.session_state.dataset_name = "Retail_Store_Sales_Marketing (400 stores)"
+                st.rerun()
+            if st.button("🌍 Global GDP & Life (1,704)", use_container_width=True):
+                st.session_state.df = pd.read_csv("sample_datasets/gapminder_global_trends.csv")
+                st.session_state.dataset_name = "Gapminder_Global_GDP (1,704 records)"
+                st.rerun()
+            if st.button("🚢 Titanic Passengers (891)", use_container_width=True):
+                st.session_state.df = pd.read_csv("sample_datasets/titanic_survival.csv")
+                st.session_state.dataset_name = "Titanic_Passenger_Survival (891 passengers)"
+                st.rerun()
             
     with col_demo2:
         st.markdown("### 📁 Or Upload Your Own Data")
