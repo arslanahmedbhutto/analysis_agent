@@ -23,7 +23,14 @@ from agent import (
 )
 from sample_data import generate_sample_ecommerce_data
 from executor import execute_analysis_code
-from eda import run_automated_eda, get_smart_prompts
+try:
+    from eda import run_automated_eda, get_smart_prompts
+except ImportError:
+    import importlib
+    import eda
+    importlib.reload(eda)
+    from eda import run_automated_eda, get_smart_prompts
+
 from report_generator import generate_executive_html_report
 
 # Set page configuration
