@@ -343,8 +343,14 @@ with st.sidebar:
             groq_models = get_groq_models(clean_k)
         else:
             groq_models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
-        model_choice = st.selectbox("Groq Model", options=groq_models, index=0)
-        st.caption("⚡ [Get a Free Groq Cloud Key at console.groq.com](https://console.groq.com/keys)")
+
+        default_groq_idx = 0
+        if "llama-3.3-70b-versatile" in groq_models:
+            default_groq_idx = groq_models.index("llama-3.3-70b-versatile")
+        elif "llama-3.1-8b-instant" in groq_models:
+            default_groq_idx = groq_models.index("llama-3.1-8b-instant")
+        model_choice = st.selectbox("Groq Model", options=groq_models, index=default_groq_idx)
+        st.caption("⚡ **Recommended for Speed**: `llama-3.3-70b-versatile` or `llama-3.1-8b-instant` (~1-2s response)")
         
     elif "Gemini" in provider:
         st.markdown('<span class="badge-online">● Google AI Studio</span>', unsafe_allow_html=True)

@@ -55,7 +55,10 @@ def get_groq_models(api_key: str) -> List[str]:
                 if not any(k in m["id"].lower() for k in ["whisper", "guard", "embed", "safeguard"])
             ]
             if models:
-                return sorted(models)
+                preferred = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]
+                top = [m for m in preferred if m in models]
+                remaining = sorted([m for m in models if m not in preferred])
+                return top + remaining
     except Exception:
         pass
     return default_models
