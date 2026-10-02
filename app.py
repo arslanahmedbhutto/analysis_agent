@@ -255,6 +255,16 @@ if "df" not in st.session_state:
 if "dataset_name" not in st.session_state:
     st.session_state.dataset_name = ""
 
+def get_app_secret(key_name: str) -> str:
+    """Fetches a secret from Streamlit Cloud Secrets or OS environment variables."""
+    try:
+        if hasattr(st, "secrets") and key_name in st.secrets:
+            return str(st.secrets[key_name])
+    except Exception:
+        pass
+    return os.getenv(key_name, "")
+
+
 # Determine Ollama Status
 ollama_active = is_ollama_running()
 
@@ -270,6 +280,7 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
+    default_p_idx = 0 if ollama_active else 2
     provider = st.selectbox(
         "AI Engine / Provider",
         options=[
@@ -280,7 +291,7 @@ with st.sidebar:
             "OpenAI",
             "LM Studio / Custom Local"
         ],
-        index=0,
+        index=default_p_idx,
         help="Select Local Ollama to run 100% free offline. Select xAI Grok or Groq Cloud for ultra-fast cloud performance."
     )
     
@@ -308,7 +319,7 @@ with st.sidebar:
 
     elif "xAI Grok" in provider:
         st.markdown('<span class="badge-online">● xAI Grok Frontier Engine</span>', unsafe_allow_html=True)
-        env_xai_key = os.getenv("XAI_API_KEY", "")
+        env_xai_key = get_app_secret("XAI_API_KEY")
         api_key = st.text_input(
             "xAI Grok API Key",
             value=env_xai_key,
@@ -328,7 +339,7 @@ with st.sidebar:
             
     elif "Groq" in provider:
         st.markdown('<span class="badge-online">● Ultra-Fast Cloud LPUs</span>', unsafe_allow_html=True)
-        env_groq_key = os.getenv("GROQ_API_KEY", "")
+        env_groq_key = get_app_secret("GROQ_API_KEY")
         api_key = st.text_input(
             "Groq API Key",
             value=env_groq_key,
@@ -354,7 +365,7 @@ with st.sidebar:
         
     elif "Gemini" in provider:
         st.markdown('<span class="badge-online">● Google AI Studio</span>', unsafe_allow_html=True)
-        env_gemini_key = os.getenv("GEMINI_API_KEY", "")
+        env_gemini_key = get_app_secret("GEMINI_API_KEY")
         api_key = st.text_input(
             "Gemini API Key",
             value=env_gemini_key,
@@ -370,7 +381,7 @@ with st.sidebar:
         st.caption("✨ [Get a Free Gemini Key](https://aistudio.google.com/app/apikey)")
 
     elif "OpenAI" in provider:
-        env_openai_key = os.getenv("OPENAI_API_KEY", "")
+        env_openai_key = get_app_secret("OPENAI_API_KEY")
         api_key = st.text_input(
             "OpenAI API Key",
             value=env_openai_key,
