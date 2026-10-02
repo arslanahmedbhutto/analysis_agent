@@ -1,6 +1,7 @@
 """
-InsightAgent AI - Advanced Data Analysis & Visualization Suite
-Autonomous Python Code-Interpreter Agent with Multi-Provider Support (Ollama, Groq, Gemini, OpenAI)
+InsightAgent AI - Advanced Autonomous Data Analysis Suite
+Features: Multi-Provider (Ollama, Groq, Gemini, OpenAI), Interactive Plotly Visualizations,
+1-Click Automated EDA Audit, In-Chat Data Cleaning & CSV/Excel Export, and Executive Brief Generation.
 """
 
 import os
@@ -16,6 +17,8 @@ load_dotenv()
 from agent import DataAnalysisAgent, get_ollama_models, is_ollama_running
 from sample_data import generate_sample_ecommerce_data
 from executor import execute_analysis_code
+from eda import run_automated_eda
+from report_generator import generate_executive_html_report
 
 # Set page configuration
 st.set_page_config(
@@ -34,7 +37,6 @@ st.markdown("""
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
-    /* Gradient Brand Header */
     .app-header {
         display: flex;
         align-items: center;
@@ -70,7 +72,6 @@ st.markdown("""
         border: 1px solid rgba(79, 70, 229, 0.2);
     }
 
-    /* Metric Cards */
     .kpi-container {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -113,7 +114,6 @@ st.markdown("""
         margin-top: 2px;
     }
 
-    /* Welcome Hero Card */
     .hero-card {
         background: linear-gradient(135deg, #F8FAFC 0%, #EEF2FF 100%);
         border: 1px solid #E0E7FF;
@@ -163,7 +163,6 @@ st.markdown("""
         flex-shrink: 0;
     }
 
-    /* Status Badges */
     .badge-online {
         background-color: #ECFDF5;
         color: #059669;
@@ -189,7 +188,6 @@ st.markdown("""
         gap: 5px;
     }
 
-    /* Visual Chart Card */
     .chart-card {
         background: #FFFFFF;
         border-radius: 14px;
@@ -210,7 +208,6 @@ st.markdown("""
         color: #334155;
     }
 
-    /* Terminal Output Box */
     .terminal-box {
         background: #0F172A;
         color: #38BDF8;
@@ -223,10 +220,16 @@ st.markdown("""
         border: 1px solid #1E293B;
     }
 
-    /* Chat message enhancements */
-    .stChatMessage {
-        border-radius: 12px;
-        margin-bottom: 12px;
+    .transformation-banner {
+        background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%);
+        border: 1px solid #6EE7B7;
+        border-radius: 10px;
+        padding: 12px 16px;
+        color: #065F46;
+        margin: 10px 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -249,7 +252,7 @@ with st.sidebar:
         <span style="font-size: 26px;">⚡</span>
         <div>
             <div style="font-weight: 800; font-size: 1.15rem; color: #1E293B;">Engine Settings</div>
-            <div style="font-size: 0.78rem; color: #64748B;">Model & Sandbox Options</div>
+            <div style="font-size: 0.78rem; color: #64748B;">Multi-Provider Support</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -365,6 +368,21 @@ with st.sidebar:
 
     st.markdown("---")
     
+    # Export Session Report
+    if st.session_state.df is not None and st.session_state.messages:
+        report_html = generate_executive_html_report(
+            dataset_name=st.session_state.dataset_name,
+            df=st.session_state.df,
+            messages=st.session_state.messages
+        )
+        st.download_button(
+            label="📄 Export Executive Report (HTML)",
+            data=report_html,
+            file_name=f"Executive_Report_{int(time.time())}.html",
+            mime="text/html",
+            use_container_width=True
+        )
+
     # Workspace Controls
     col_c1, col_c2 = st.columns(2)
     with col_c1:
@@ -394,9 +412,9 @@ st.markdown(f"""
         <div>
             <div style="display: flex; align-items: center; gap: 10px;">
                 <span class="brand-title">InsightAgent AI</span>
-                <span class="brand-badge">v2.0 Autonomous</span>
+                <span class="brand-badge">v2.5 Autonomous</span>
             </div>
-            <div class="brand-subtitle">Autonomous Python Code-Interpreter for Data Science, Analytics & Visualizations</div>
+            <div class="brand-subtitle">Interactive Plotly Visualizations • Automated EDA Audit • In-Chat Data Cleaning & Export</div>
         </div>
     </div>
     <div>
@@ -407,29 +425,28 @@ st.markdown(f"""
 
 # Main Screen State Management
 if st.session_state.df is None:
-    # Beautiful Empty State / Welcome Screen
     st.markdown("""
     <div class="hero-card">
         <div class="hero-title">Turn Natural Language into Executive Data Intelligence</div>
         <div class="hero-desc">
-            InsightAgent inspects your tabular dataset, generates real-time Python code, executes it inside an isolated sandbox, captures statistics & charts, and produces executive business insights—all without hallucinating or overriding your data.
+            InsightAgent inspects your tabular dataset, generates real-time Python code, executes it inside an isolated sandbox, captures statistics & interactive Plotly charts, auto-cleans data, and produces executive business insights—all without hallucinating or overriding your data.
         </div>
         <div class="feature-grid">
             <div class="feature-item">
-                <div class="feature-icon">🛡️</div>
-                <div><b>Zero-Overwrite Code Sandbox</b>: Safely isolates DataFrame operations without memory corruption.</div>
+                <div class="feature-icon">📊</div>
+                <div><b>Interactive Plotly Visuals</b>: Hover tooltips, zoom, pan, and dynamic legends.</div>
             </div>
             <div class="feature-item">
-                <div class="feature-icon">📈</div>
-                <div><b>Automated Visuals</b>: Captures Matplotlib/Seaborn plots with 1-click PNG export.</div>
+                <div class="feature-icon">🚀</div>
+                <div><b>1-Click Auto EDA Audit</b>: Instant statistical profiling, anomaly detection & correlations.</div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon">🧹</div>
+                <div><b>In-Chat Data Cleaning</b>: Transform, filter, enrich data and export new CSVs on the fly.</div>
             </div>
             <div class="feature-item">
                 <div class="feature-icon">🆓</div>
                 <div><b>100% Free & Offline</b>: Powered by local Ollama with zero API cost and strict data privacy.</div>
-            </div>
-            <div class="feature-item">
-                <div class="feature-icon">⚡</div>
-                <div><b>Self-Healing Execution</b>: Automatically catches tracebacks and auto-repairs code errors.</div>
             </div>
         </div>
     </div>
@@ -482,16 +499,53 @@ else:
     """, unsafe_allow_html=True)
 
     # Interactive Dataset Workspace Tabs
-    with st.expander(f"📁 Dataset Explorer: **{st.session_state.dataset_name}**", expanded=False):
-        tab1, tab2, tab3 = st.tabs(["📋 Data Preview", "📈 Statistical Summary", "🏷️ Data Dictionary & Types"])
+    with st.expander(f"📁 Dataset Explorer & Auto EDA: **{st.session_state.dataset_name}**", expanded=False):
+        tab1, tab2, tab3, tab4 = st.tabs(["🚀 Automated EDA Audit", "📋 Data Preview", "📈 Statistical Summary", "🏷️ Column Types"])
         
         with tab1:
+            st.markdown("### 🚀 Automated Executive EDA Audit")
+            eda_results = run_automated_eda(df)
+            
+            # Show executive findings
+            for insight in eda_results["insights"]:
+                st.markdown(insight)
+                
+            st.markdown("---")
+            if eda_results["corr_fig"] is not None:
+                st.plotly_chart(eda_results["corr_fig"], use_container_width=True)
+                
+            col_eda1, col_eda2 = st.columns(2)
+            if eda_results["distribution_figs"]:
+                with col_eda1:
+                    st.plotly_chart(eda_results["distribution_figs"][0][1], use_container_width=True)
+            if eda_results["category_figs"]:
+                with col_eda2:
+                    st.plotly_chart(eda_results["category_figs"][0][1], use_container_width=True)
+                    
+            if eda_results["outlier_summary"]:
+                st.markdown("##### 🔍 Detected Outliers (IQR Method):")
+                outlier_rows = [
+                    {"Column": k, "Outlier Count": v["count"], "Outlier %": f"{v['pct']}%", "Normal Range": f"[{v['lower']} to {v['upper']}]"}
+                    for k, v in eda_results["outlier_summary"].items()
+                ]
+                st.dataframe(pd.DataFrame(outlier_rows), use_container_width=True)
+
+        with tab2:
             st.dataframe(df.head(50), use_container_width=True)
             
-        with tab2:
-            st.dataframe(df.describe(include="all").T, use_container_width=True)
+            # Download Current Dataset
+            csv_buf = df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download Current Dataset (CSV)",
+                data=csv_buf,
+                file_name="current_dataset.csv",
+                mime="text/csv"
+            )
             
         with tab3:
+            st.dataframe(df.describe(include="all").T, use_container_width=True)
+            
+        with tab4:
             col_summary_df = pd.DataFrame({
                 "Column": df.columns,
                 "Type": df.dtypes.astype(str),
@@ -503,16 +557,18 @@ else:
 
     # Quick Prompts / Questions
     st.markdown("##### ⚡ Quick Analysis Prompts:")
-    q_cols = st.columns(4)
+    q_cols = st.columns(5)
     quick_prompt = None
 
     if q_cols[0].button("🏆 Top Revenue Cities", use_container_width=True):
-        quick_prompt = "Which city has the highest total revenue? Create a bar chart showing the full ranking."
+        quick_prompt = "Which city has the highest total revenue? Create an interactive Plotly bar chart showing the full ranking."
     if q_cols[1].button("📈 Monthly Revenue Trend", use_container_width=True):
-        quick_prompt = "Plot a line chart of monthly revenue trend over time with rotated labels."
+        quick_prompt = "Plot an interactive line chart of monthly revenue trend over time with rotated labels."
     if q_cols[2].button("⚖️ Channel Comparison", use_container_width=True):
         quick_prompt = "Compare Online and Retail Store channels in terms of revenue, average order value, and return rate."
-    if q_cols[3].button("💼 Senior Analyst Insights", use_container_width=True):
+    if q_cols[3].button("🧹 Clean / Filter Data", use_container_width=True):
+        quick_prompt = "Add a new column 'profit' = revenue * 0.25 and filter out any orders where returned == 1."
+    if q_cols[4].button("💼 Analyst Insights", use_container_width=True):
         quick_prompt = "Act as a senior business analyst. Find 3 non-obvious insights with supporting metrics and recommendations."
 
     # Chat Messages History
@@ -521,11 +577,14 @@ else:
             if message["role"] == "user":
                 st.markdown(f"**{message['content']}**")
             else:
-                # Text Analysis
                 st.markdown(message.get("analysis", ""))
                 
-                # Render Chart Card
-                if message.get("image_bytes"):
+                # Render Plotly interactive chart if available
+                if message.get("plotly_fig"):
+                    st.plotly_chart(message["plotly_fig"], use_container_width=True)
+                
+                # Render Matplotlib static chart if available
+                elif message.get("image_bytes"):
                     st.markdown("""
                     <div class="chart-card">
                         <div class="chart-header">
@@ -543,6 +602,22 @@ else:
                         key=f"dl_{message.get('id', time.time())}"
                     )
                     
+                # Render Data Transformation Download Button
+                if message.get("data_transformed"):
+                    st.markdown(f"""
+                    <div class="transformation-banner">
+                        <span>✨ <b>Dataset updated!</b> The changes have been saved to your active dataset.</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    csv_export = st.session_state.df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        label="📥 Download Cleaned / Transformed Dataset (CSV)",
+                        data=csv_export,
+                        file_name="transformed_dataset.csv",
+                        mime="text/csv",
+                        key=f"dl_df_{message.get('id', time.time())}"
+                    )
+
                 # Render Python Code in Expander
                 if message.get("code"):
                     with st.expander("🔍 View Generated Python Code"):
@@ -552,12 +627,11 @@ else:
                             st.markdown(f'<div class="terminal-box">{message["stdout"]}</div>', unsafe_allow_html=True)
 
     # Chat Input Box
-    user_query = st.chat_input("Ask any question about your data or request a chart...")
+    user_query = st.chat_input("Ask any question, request interactive plots, or ask to clean/transform the data...")
     if quick_prompt:
         user_query = quick_prompt
 
     if user_query:
-        # Validate Provider Credentials
         if provider != "Local (Ollama)" and provider != "LM Studio / Custom Local" and not api_key:
             st.error(f"Please provide your {provider} API key in the sidebar to proceed.")
             st.stop()
@@ -599,6 +673,9 @@ else:
                     "error": str(e),
                     "figure": None,
                     "image_bytes": None,
+                    "plotly_fig": None,
+                    "modified_df": None,
+                    "data_transformed": False,
                     "analysis": f"❌ **Error running analysis with {provider}:** {e}",
                     "success": False,
                     "attempts": 1
@@ -610,8 +687,12 @@ else:
             # Render Analysis
             st.markdown(result["analysis"])
             
-            # Render Visual Chart if Generated
-            if result.get("image_bytes"):
+            # If Plotly figure generated, render interactively
+            if result.get("plotly_fig"):
+                st.plotly_chart(result["plotly_fig"], use_container_width=True)
+                
+            # Else if Matplotlib figure generated, render static image
+            elif result.get("image_bytes"):
                 st.markdown("""
                 <div class="chart-card">
                     <div class="chart-header">
@@ -630,6 +711,23 @@ else:
                     key=f"dl_{msg_id}"
                 )
                 
+            # If Data was Transformed, update session state and show download button
+            if result.get("data_transformed") and result.get("modified_df") is not None:
+                st.session_state.df = result["modified_df"]
+                st.markdown(f"""
+                <div class="transformation-banner">
+                    <span>✨ <b>Dataset updated!</b> Shape is now: <b>{st.session_state.df.shape[0]:,} rows × {st.session_state.df.shape[1]} columns</b>.</span>
+                </div>
+                """, unsafe_allow_html=True)
+                csv_export = st.session_state.df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Download Cleaned / Transformed Dataset (CSV)",
+                    data=csv_export,
+                    file_name="transformed_dataset.csv",
+                    mime="text/csv",
+                    key=f"dl_df_{int(time.time()*1000)}"
+                )
+
             # Render Code in Expander
             if result.get("code"):
                 with st.expander(f"🔍 View Generated Python Code ({provider} | {elapsed:.2f}s)"):
@@ -646,4 +744,6 @@ else:
                 "code": result.get("code"),
                 "stdout": result.get("stdout"),
                 "image_bytes": result.get("image_bytes"),
+                "plotly_fig": result.get("plotly_fig"),
+                "data_transformed": result.get("data_transformed", False)
             })

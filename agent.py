@@ -2,6 +2,7 @@
 Multi-Provider Custom Coding Analysis Agent.
 Supports Local Ollama (100% Free & Offline, No API key needed),
 Groq, Google Gemini, OpenAI, and LM Studio / Custom Local models.
+Equipped with Plotly interactive charting, Scikit-Learn ML, and Data Transformation.
 """
 
 import os
@@ -75,7 +76,7 @@ class DataAnalysisAgent:
     def __init__(
         self,
         provider: str = "Local (Ollama)",
-        model: str = "llama3.1",
+        model: str = "qwen2.5-coder:1.5b",
         api_key: str = "",
         custom_base_url: str = ""
     ):
@@ -83,7 +84,6 @@ class DataAnalysisAgent:
         self.model = model
         self.api_key = api_key
         
-        # Initialize appropriate client
         if provider == "Local (Ollama)":
             base_url = custom_base_url or "http://localhost:11434/v1"
             self.client = OpenAI(base_url=base_url, api_key="ollama")
@@ -106,7 +106,7 @@ class DataAnalysisAgent:
         matches = re.findall(pattern, response_text, re.DOTALL)
         if matches:
             return max(matches, key=len).strip()
-        if "df." in response_text or "plt." in response_text or "print(" in response_text:
+        if "df." in response_text or "plt." in response_text or "px." in response_text or "print(" in response_text:
             return response_text.strip()
         return None
 
@@ -127,15 +127,26 @@ You are given a pandas DataFrame named `df` with {len(df):,} rows.
 
 {schema_text}
 
+ENVIRONMENT & LIBRARIES AVAILABLE:
+- `df`: The loaded dataset.
+- `pd`: pandas
+- `np`: numpy
+- `px`: plotly.express (RECOMMENDED FOR INTERACTIVE PLOTS)
+- `go`: plotly.graph_objects
+- `plt`: matplotlib.pyplot
+- `sns`: seaborn
+- `sklearn`: scikit-learn (for regression, forecasting, clustering, classification)
+
 CRITICAL RULES:
-1. The DataFrame `df` is ALREADY LOADED in memory with all {len(df):,} rows.
-   NEVER re-create `df = pd.DataFrame(...)` or mock sample data.
-2. ALWAYS write Python code (`pandas`, `numpy`, `matplotlib.pyplot`, `seaborn`) to compute answers.
-3. Print key figures, summary statistics, and tables clearly using `print(...)` so they are captured.
-4. If a chart or graph is requested or helpful:
-   - Use `plt.figure(figsize=(10, 5))` or `sns...` with clean styling (`sns.set_theme(style='whitegrid')`).
-   - Add clear titles, axis labels, legends, and call `plt.tight_layout()`.
-   - Do NOT call `plt.show()`, the environment automatically captures the active figure.
+1. PRESERVE DATASET: Do not mock data with `df = pd.DataFrame(...)`. The full dataset is already in `df`.
+2. DATA TRANSFORMATION: If the user asks to filter, clean, add columns, or transform data (e.g. 'remove outliers', 'fill nulls', 'add a column profit = ...'):
+   - Apply the changes directly to `df` (e.g. `df['profit'] = ...` or `df = df[df['col'] > 0]`).
+   - The environment will detect the update and provide a download button for the new dataset!
+3. INTERACTIVE VISUALIZATIONS:
+   - When generating a chart, PREFER Plotly Express (`px`) and assign it to `fig`:
+     e.g., `fig = px.bar(..., title="...")` or `fig = px.line(...)` or `fig = px.scatter(...)`
+   - If using matplotlib/seaborn, configure standard plots without calling `plt.show()`.
+4. OUTPUT: Always print key summary numbers, tables, or metric calculations using `print(...)`.
 5. Format your response strictly with:
    - A brief 1-2 sentence thought/plan.
    - The executable code inside a ```python ``` block.
@@ -172,7 +183,10 @@ CRITICAL RULES:
                         "error": error_str,
                         "figure": None,
                         "image_bytes": None,
-                        "analysis": "❌ **Could not connect to Ollama.**\n\nPlease ensure Ollama is installed and running (`ollama serve` or `ollama run <model>`).",
+                        "plotly_fig": None,
+                        "modified_df": None,
+                        "data_transformed": False,
+                        "analysis": "❌ **Could not connect to Ollama.**\n\nPlease ensure Ollama is running (`ollama serve`).",
                         "success": False,
                         "attempts": attempts,
                     }
@@ -187,6 +201,9 @@ CRITICAL RULES:
                     "error": None,
                     "figure": None,
                     "image_bytes": None,
+                    "plotly_fig": None,
+                    "modified_df": None,
+                    "data_transformed": False,
                     "analysis": raw_response,
                     "success": True,
                     "attempts": attempts,
@@ -214,7 +231,8 @@ User Question: "{query}"
 Execution Output from Data Code:
 {exec_result.stdout if exec_result.stdout else "Code executed successfully without text output."}
 
-Has visual chart generated: {"Yes" if exec_result.figure is not None else "No"}
+Has visual chart generated: {"Yes" if (exec_result.plotly_fig is not None or exec_result.figure is not None) else "No"}
+Data transformed: {"Yes" if exec_result.data_was_transformed else "No"}
 
 Provide a clear, executive, well-structured answer to the user:
 - Directly answer the question with exact numbers/percentages from the output.
@@ -241,6 +259,9 @@ Provide a clear, executive, well-structured answer to the user:
             "error": exec_result.error if exec_result and not exec_result.success else None,
             "figure": exec_result.figure if exec_result else None,
             "image_bytes": exec_result.image_bytes if exec_result else None,
+            "plotly_fig": exec_result.plotly_fig if exec_result else None,
+            "modified_df": exec_result.modified_df if exec_result else None,
+            "data_transformed": exec_result.data_was_transformed if exec_result else False,
             "analysis": final_summary,
             "success": exec_result.success if exec_result else False,
             "attempts": attempts,

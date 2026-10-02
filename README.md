@@ -31,6 +31,15 @@ Supports **100% Free & Offline Local Ollama** (no API key, zero cost, total data
   - Drag-and-drop file ingestion (**CSV**, **Excel** `.xlsx`, `.xls`).
   - **1-Click Pakistani E-Commerce Demo**: 500-order retail dataset across Karachi, Lahore, Islamabad, Sukkur, Multan.
   - Interactive dataset explorer, missing value detector, memory footprint, and descriptive statistics.
+- **🚀 1-Click Automated EDA Executive Audit**:
+  - Instant automated profiling of any uploaded dataset: health check, missingness rate, outlier detection (IQR), and correlation analysis with zero prompting.
+- **📊 Interactive Plotly Visualizations**:
+  - Generates rich interactive charts (hover tooltips, zoom, pan, category toggles) using **Plotly Express**, with fallback to Matplotlib/Seaborn.
+- **🧹 In-Chat Data Cleaning & Modified CSV Export**:
+  - Instruct the agent to clean or enrich data (*"remove outliers"*, *"fill missing values"*, *"add column profit = revenue * 0.2"*).
+  - Automatically updates the active dataset and generates an instant **Download Transformed CSV** button.
+- **📄 Executive HTML Brief Export**:
+  - One-click export of the entire session (KPIs, queries, AI business insights, and tables) as a print-ready executive HTML report.
 - **🆓 100% Free Local Execution**:
   - Run completely offline with **Local Ollama** (e.g. `qwen2.5-coder:1.5b`, `llama3.1`).
   - No credit card, no API keys, and zero token charges. Data never leaves your machine.
@@ -38,9 +47,6 @@ Supports **100% Free & Offline Local Ollama** (no API key, zero cost, total data
   - **Eliminates Data Overwrite Bugs**: Unlike legacy LangChain DataFrame agents that mistakenly overwrite datasets with sample rows, our agent guarantees strict DataFrame preservation.
   - **Self-Healing Error Correction**: If generated Python code throws a syntax or pandas exception, the agent inspects the traceback and auto-repairs the code up to 2 times before responding.
   - **Complete Code Transparency**: Inspect the exact Python code generated and executed for every answer.
-- **📈 Automated High-Resolution Visualizations**:
-  - Generates clean Matplotlib and Seaborn figures (bar charts, time-series line charts, grouped bars, histograms).
-  - One-click **Download Chart (PNG)** at 150 DPI.
 - **⚡ Executive Business Synthesis**:
   - Translates console outputs into actionable business takeaways, percentage metrics, and executive summaries.
 
@@ -153,7 +159,9 @@ analysis_agent/
 │
 ├── app.py                     # Streamlit modern Web Application & UI
 ├── agent.py                   # Multi-provider coding agent with self-healing loop
-├── executor.py                # Isolated Python execution sandbox (captures stdout & figures)
+├── executor.py                # Isolated Python execution sandbox (captures stdout, Plotly & figures)
+├── eda.py                     # 1-Click Automated Exploratory Data Analysis & profiling engine
+├── report_generator.py        # Executive HTML/PDF-ready session report generator
 ├── sample_data.py             # 500-order Pakistani e-commerce dataset generator
 ├── run_app.bat                # 1-click Windows launcher
 ├── requirements.txt           # Python package requirements
