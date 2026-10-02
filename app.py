@@ -23,7 +23,7 @@ from agent import (
 )
 from sample_data import generate_sample_ecommerce_data
 from executor import execute_analysis_code
-from eda import run_automated_eda
+from eda import run_automated_eda, get_smart_prompts
 from report_generator import generate_executive_html_report
 
 # Set page configuration
@@ -632,21 +632,14 @@ else:
             })
             st.dataframe(col_summary_df, use_container_width=True)
 
-    # Quick Prompts / Questions
+    # Quick Prompts / Questions (Dynamically generated based on active dataset)
     st.markdown("##### ⚡ Quick Analysis Prompts:")
-    q_cols = st.columns(5)
+    smart_prompts = get_smart_prompts(df, st.session_state.dataset_name)
+    q_cols = st.columns(len(smart_prompts))
     quick_prompt = None
-
-    if q_cols[0].button("🏆 Top Revenue Cities", use_container_width=True):
-        quick_prompt = "Which city has the highest total revenue? Create an interactive Plotly bar chart showing the full ranking."
-    if q_cols[1].button("📈 Monthly Revenue Trend", use_container_width=True):
-        quick_prompt = "Plot an interactive line chart of monthly revenue trend over time with rotated labels."
-    if q_cols[2].button("⚖️ Channel Comparison", use_container_width=True):
-        quick_prompt = "Compare Online and Retail Store channels in terms of revenue, average order value, and return rate."
-    if q_cols[3].button("🧹 Clean / Filter Data", use_container_width=True):
-        quick_prompt = "Add a new column 'profit' = revenue * 0.25 and filter out any orders where returned == 1."
-    if q_cols[4].button("💼 Analyst Insights", use_container_width=True):
-        quick_prompt = "Act as a senior business analyst. Find 3 non-obvious insights with supporting metrics and recommendations."
+    for idx, p_info in enumerate(smart_prompts):
+        if q_cols[idx].button(p_info["label"], use_container_width=True, help=p_info["prompt"]):
+            quick_prompt = p_info["prompt"]
 
     # Chat Messages History
     for message in st.session_state.messages:
@@ -744,17 +737,26 @@ else:
                     chat_history=history_context
                 )
             except Exception as e:
+                err_msg = str(e)
+                if "model_not_found" in err_msg.lower() or "404" in err_msg:
+                    friendly_err = f"💡 **Model Notice:** The selected model (`{model_choice}`) could not be reached on {provider}. Please check the model name or verify access in the sidebar."
+                elif "api_key" in err_msg.lower() or "401" in err_msg or "unauthorized" in err_msg.lower():
+                    friendly_err = f"💡 **Authentication Notice:** Invalid API key for {provider}. Please check your key in the sidebar."
+                elif "connection" in err_msg.lower():
+                    friendly_err = f"💡 **Connection Notice:** Could not connect to {provider}. Please check your network or local server."
+                else:
+                    friendly_err = f"💡 **Analysis Notice:** Unable to complete analysis with {provider} at this time. Please try rephrasing your request or use one of the quick prompts above."
                 result = {
                     "code": None,
                     "stdout": None,
-                    "error": str(e),
+                    "error": None,
                     "figure": None,
                     "image_bytes": None,
                     "plotly_fig": None,
                     "modified_df": None,
                     "data_transformed": False,
-                    "analysis": f"❌ **Error running analysis with {provider}:** {e}",
-                    "success": False,
+                    "analysis": friendly_err,
+                    "success": True,
                     "attempts": 1
                 }
             

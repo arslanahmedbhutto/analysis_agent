@@ -188,17 +188,20 @@ ENVIRONMENT & LIBRARIES AVAILABLE:
 
 CRITICAL RULES:
 1. PRESERVE DATASET: Do not mock data with `df = pd.DataFrame(...)`. The full dataset is already in `df`.
-2. DATA TRANSFORMATION: If the user asks to filter, clean, add columns, or transform data (e.g. 'remove outliers', 'fill nulls', 'add a column profit = ...'):
+2. ONLY USE EXISTING COLUMNS: Strictly use columns that exist in `df`: {list(df.columns)}. Do not invent or assume column names.
+3. DATA TRANSFORMATION: If the user asks to filter, clean, add columns, or transform data (e.g. 'remove outliers', 'fill nulls', 'add a column profit = ...'):
    - Apply the changes directly to `df` (e.g. `df['profit'] = ...` or `df = df[df['col'] > 0]`).
    - The environment will detect the update and provide a download button for the new dataset!
-3. INTERACTIVE VISUALIZATIONS:
+4. INTERACTIVE VISUALIZATIONS:
    - When generating a chart, PREFER Plotly Express (`px`) and assign it to `fig`:
      e.g., `fig = px.bar(..., title="...")` or `fig = px.line(...)` or `fig = px.scatter(...)`
    - If using matplotlib/seaborn, configure standard plots without calling `plt.show()`.
-4. OUTPUT: Always print key summary numbers, tables, or metric calculations using `print(...)`.
-5. Format your response strictly with:
-   - A brief 1-2 sentence thought/plan.
-   - The executable code inside a ```python ``` block.
+5. SYNTAX INTEGRITY:
+   - Ensure all parentheses `()`, brackets `[]`, and quotes are properly paired and closed.
+   - Always print key summary numbers, tables, or metric calculations using `print(...)`.
+6. CONVERSATIONAL & OVERVIEW QUESTIONS:
+   - If the user asks a greeting, broad question, or overview (e.g. 'hi explain dataset', 'what is this dataset about?', 'tell me about the data'):
+     Provide a clear, beautifully structured executive explanation directly using the dataset schema provided above. You may include simple summary code or provide direct analytical insights.
 """
 
         messages = [{"role": "system", "content": system_prompt}]
@@ -225,18 +228,18 @@ CRITICAL RULES:
                 raw_response = completion.choices[0].message.content or ""
             except Exception as api_err:
                 error_str = str(api_err)
-                if "connection" in error_str.lower() and self.provider == "Local (Ollama)":
+                if "connection" in error_str.lower() and "Ollama" in self.provider:
                     return {
                         "code": None,
                         "stdout": None,
-                        "error": error_str,
+                        "error": None,
                         "figure": None,
                         "image_bytes": None,
                         "plotly_fig": None,
                         "modified_df": None,
                         "data_transformed": False,
-                        "analysis": "❌ **Could not connect to Ollama.**\n\nPlease ensure Ollama is running (`ollama serve`).",
-                        "success": False,
+                        "analysis": "💡 **Ollama Connection Notice:**\n\nCould not connect to the local Ollama daemon. Please start Ollama by running `ollama serve` in a terminal or double-clicking `run_app.bat`.",
+                        "success": True,
                         "attempts": attempts,
                     }
                 raise api_err
@@ -268,7 +271,13 @@ CRITICAL RULES:
                     messages.append({"role": "assistant", "content": f"```python\n{code}\n```"})
                     messages.append({
                         "role": "user",
-                        "content": f"The code resulted in an error:\n{exec_result.error}\nPlease fix the error and provide the updated Python code in ```python```."
+                        "content": (
+                            f"The code encountered an error: {exec_result.error}\n"
+                            f"Please fix the error. Remember:\n"
+                            f"- Only use columns that exist in `df`: {list(df.columns)}\n"
+                            f"- Ensure all parentheses, brackets, and quotes are properly closed.\n"
+                            f"- Provide the corrected code in a ```python ``` block."
+                        )
                     })
 
         # Synthesize Executive Analysis
@@ -300,18 +309,54 @@ Provide a clear, executive, well-structured answer to the user:
             except Exception:
                 final_summary = exec_result.stdout or "Analysis complete."
         else:
-            final_summary = f"⚠️ Could not execute analysis after {attempts} attempts.\n\n**Error:**\n```\n{exec_result.error if exec_result else 'Unknown error'}\n```"
+            # Graceful error handling: synthesize an informative explanation instead of raw error traceback
+            advisory_prompt = f"""You are a helpful Senior Data Scientist.
+User Question: "{query}"
+
+We attempted to run analysis code on this dataset, but the calculation could not be completed.
+Reason: {exec_result.error if exec_result else 'Operation not applicable'}
+
+Available Columns in Dataset:
+{list(df.columns)}
+
+Write a polite, professional, and graceful response to the user:
+1. Explain clearly in non-technical terms why this specific analysis cannot be run on this dataset (for example, if the question asks for columns or concepts like 'city' or 'sales' that do not exist in this dataset, or if the calculation was incompatible).
+2. Point out which relevant columns ARE available in this dataset.
+3. Suggest 2-3 specific questions or alternative analyses that CAN be run on this dataset right now.
+IMPORTANT: DO NOT include any Python stack traces, tracebacks, SyntaxError code, or raw error messages. Keep the tone friendly, polished, and solution-focused.
+"""
+            try:
+                adv_resp = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": advisory_prompt}],
+                    temperature=0.3,
+                    max_tokens=800,
+                )
+                final_summary = adv_resp.choices[0].message.content or ""
+            except Exception:
+                col_list_str = ", ".join([f"`{c}`" for c in df.columns[:8]])
+                final_summary = f"""💡 **Analysis Advisory:**
+
+I was unable to complete this calculation on the active dataset. This typically happens when a question references columns, metrics, or categories that do not exist in this file.
+
+**Available Columns in this dataset:**
+{col_list_str}
+
+**Suggested Next Steps:**
+- Try clicking one of the 1-click **Quick Analysis Prompts** tailored above for this dataset.
+- Or ask an analysis question using the available columns listed above.
+"""
 
         return {
-            "code": executed_code,
-            "stdout": exec_result.stdout if exec_result else "",
-            "error": exec_result.error if exec_result and not exec_result.success else None,
+            "code": executed_code if (exec_result and exec_result.success) else None,
+            "stdout": exec_result.stdout if (exec_result and exec_result.success) else "",
+            "error": None,
             "figure": exec_result.figure if exec_result else None,
             "image_bytes": exec_result.image_bytes if exec_result else None,
             "plotly_fig": exec_result.plotly_fig if exec_result else None,
             "modified_df": exec_result.modified_df if exec_result else None,
             "data_transformed": exec_result.data_was_transformed if exec_result else False,
             "analysis": final_summary,
-            "success": exec_result.success if exec_result else False,
+            "success": True,
             "attempts": attempts,
         }

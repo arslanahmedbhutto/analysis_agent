@@ -85,13 +85,34 @@ def execute_analysis_code(code: str, df: pd.DataFrame) -> ExecutionResult:
     data_transformed = False
     modified_df_result = None
 
+    # Pre-validate syntax before execution to catch unclosed brackets or syntax issues cleanly
+    try:
+        import ast
+        ast.parse(code)
+    except SyntaxError as syn_err:
+        line_info = f"line {syn_err.lineno}" if syn_err.lineno else "code"
+        text_snippet = syn_err.text.strip() if syn_err.text else ""
+        clean_err = f"SyntaxError on {line_info}: {syn_err.msg}"
+        if text_snippet:
+            clean_err += f" in: `{text_snippet}`"
+        return ExecutionResult(
+            success=False,
+            stdout="",
+            error=clean_err
+        )
+
     try:
         with contextlib.redirect_stdout(stdout_capture), contextlib.redirect_stderr(stderr_capture):
             exec(code, sandbox_globals)
         success = True
     except Exception as e:
         success = False
-        error_msg = f"{type(e).__name__}: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+        err_type = type(e).__name__
+        err_text = str(e)
+        if err_type == "KeyError":
+            error_msg = f"KeyError: Column {err_text} does not exist in df. Available columns are: {list(df.columns)}"
+        else:
+            error_msg = f"{err_type}: {err_text}"
     finally:
         plt.show = orig_show
 
