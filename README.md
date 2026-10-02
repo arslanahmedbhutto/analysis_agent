@@ -16,9 +16,15 @@ Supports **100% Free & Offline Local Ollama** (no API keys, zero cost, total dat
 
 ---
 
+## 📸 Application Preview
+
+![InsightAgent AI Main Screen](output/mainscreen.png)
+
+---
+
 ## 📑 Table of Contents
 - [🌐 Live Web Demo](#-live-web-demo)
-- [✨ Key Features](#-key-features)
+- [✨ Key Features & Screenshots](#-key-features--screenshots)
 - [🏗️ Architecture](#️-architecture)
 - [🚀 Quick Start (Local)](#-quick-start-local)
 - [🆓 100% Free Offline with Local Ollama](#-100-free-offline-with-local-ollama)
@@ -31,7 +37,7 @@ Supports **100% Free & Offline Local Ollama** (no API keys, zero cost, total dat
 
 ## 🌐 Live Web Demo
 
-You can try the full application directly in your web browser with zero setup:
+Experience the full application live in your browser (no local setup required):
 
 👉 **[https://insightanalysisagent.streamlit.app/](https://insightanalysisagent.streamlit.app/)**
 
@@ -39,33 +45,47 @@ You can try the full application directly in your web browser with zero setup:
 
 ---
 
-## ✨ Key Features
+## ✨ Key Features & Screenshots
 
-- **🌐 Modern SaaS Web Interface**:
-  - Drag-and-drop file ingestion (**CSV**, **Excel** `.xlsx`, `.xls`).
-  - **6 Curated 1-Click Sample Datasets**: Pakistani E-Commerce, Telco Customer Churn, Apple (AAPL) Stock, Gapminder Global GDP, Carseats Retail, and Titanic.
-  - Interactive dataset explorer, missing value detector, memory footprint, and descriptive statistics.
-- **⚡ Dynamic Dataset-Aware Quick Prompts**:
-  - Automatically inspects the active dataset's columns and data types to generate 5 guaranteed-to-match questions and interactive Plotly chart suggestions.
-- **🚀 1-Click Automated EDA Executive Audit**:
-  - Instant automated profiling of any uploaded dataset: health check, missingness rate, outlier detection (IQR), and correlation heatmaps with zero prompting.
-- **📊 Interactive Plotly Visualizations**:
-  - Generates rich interactive charts (hover tooltips, zoom, pan, category toggles) using **Plotly Express**, with fallback to Matplotlib/Seaborn.
-- **🧹 In-Chat Data Cleaning & Modified CSV Export**:
-  - Instruct the agent to clean or enrich data (*"remove outliers"*, *"fill missing values"*, *"add column profit = revenue * 0.2"*).
-  - Automatically updates the active dataset and generates an instant **Download Transformed CSV** button.
-- **📄 Executive HTML Brief Export**:
-  - One-click export of the entire session (KPIs, queries, AI business insights, and tables) as a print-ready executive HTML report.
-- **🆓 100% Free Local Execution**:
-  - Run completely offline with **Local Ollama** (`qwen2.5-coder:1.5b`, `llama3.1`).
-  - No credit card, no API keys, and zero token charges. Data never leaves your machine.
-- **🛡️ Custom Autonomous Code-Interpreter**:
-  - **Strict DataFrame Protection**: Guarantees zero data overwrite bugs.
-  - **AST Pre-Validation & Self-Healing Loop**: If generated Python code throws a syntax or pandas exception, the agent inspects the diagnostic and auto-repairs the code up to 2 times before responding.
-  - **Zero Raw Error Tracebacks**: If an analysis is impossible on a dataset, the agent provides a polite, non-technical advisory listing available columns and alternative questions.
-  - **Complete Code Transparency**: Inspect the exact Python code generated and executed for every answer.
-- **⚡ Executive Business Synthesis**:
-  - Translates console outputs into actionable business takeaways, percentage metrics, and executive summaries.
+### 1. 🌐 Modern SaaS Interface & 1-Click Curated Datasets
+- Drag-and-drop file ingestion (**CSV**, **Excel** `.xlsx`, `.xls`).
+- **6 Curated 1-Click Datasets**: Pakistani E-Commerce, Telco Customer Churn, Apple (AAPL) Stock, Gapminder Global GDP, Carseats Retail, and Titanic.
+- Live KPI summary cards: dataset dimensions, null counts, and allocated RAM memory footprint.
+
+![Dataset Explorer and Preview](output/output2.png)
+
+---
+
+### 2. ⚡ Dynamic Dataset-Aware Quick Prompts
+- The agent automatically inspects active columns, types, and categories to generate **5 guaranteed-to-match questions** and interactive Plotly chart suggestions.
+- Eliminates guesswork by tailoring prompts specifically to whichever file is loaded.
+
+---
+
+### 3. 🚀 1-Click Automated EDA Executive Audit & Profiling
+- Instant automated statistical audit of any uploaded dataset:
+  - Missingness percentage alerts & row duplication verification.
+  - Statistical outlier isolation using the **Interquartile Range (IQR)** method.
+  - Interactive feature correlation heatmaps.
+
+![Automated EDA and Outlier Profiling](output/output5.png)
+
+---
+
+### 4. 🧠 Autonomous Python Code Execution & Self-Healing Loop
+- **Code Transparency**: Inspect the exact Python code generated and executed for every answer.
+- **AST Pre-Validation**: Validates brackets and syntax before running code inside the sandbox.
+- **Self-Healing Feedback Loop**: If an error occurs, the agent diagnoses the issue and auto-corrects the code in real time.
+- **Zero Raw Tracebacks**: If an analysis is impossible on a dataset, the agent synthesizes a polite, non-technical advisory.
+
+![Autonomous Code Execution & Insights](output/output1.png)
+
+---
+
+### 5. 📄 Standalone Executive Intelligence Reports
+- One-click export of the entire session (KPIs, questions, AI takeaways, and console metrics) as a print-ready executive brief.
+
+![Executive Intelligence Report Brief](output/report_generate.png)
 
 ---
 
@@ -169,6 +189,14 @@ analysis_agent/
 ├── sample_data.py             # 6 industry benchmark datasets & generator
 ├── run_app.bat                # 1-click Windows desktop launcher
 ├── requirements.txt           # Python package requirements
+│
+├── output/                    # UI screenshots & preview assets
+│   ├── mainscreen.png
+│   ├── output1.png
+│   ├── output2.png
+│   ├── output5.png
+│   └── report_generate.png
+│
 ├── sample_datasets/           # Curated CSV datasets for instant testing
 │   ├── Pakistani_ECommerce_Orders.csv
 │   ├── Telco_Customer_Churn.csv
