@@ -140,3 +140,4 @@ def execute_analysis_code(code: str, df: pd.DataFrame) -> ExecutionResult:
         modified_df=modified_df_result,
         data_was_transformed=data_transformed
     )
+

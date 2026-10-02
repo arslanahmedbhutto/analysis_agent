@@ -266,3 +266,4 @@ Provide a clear, executive, well-structured answer to the user:
             "success": exec_result.success if exec_result else False,
             "attempts": attempts,
         }
+

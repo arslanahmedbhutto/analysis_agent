@@ -747,3 +747,4 @@ else:
                 "plotly_fig": result.get("plotly_fig"),
                 "data_transformed": result.get("data_transformed", False)
             })
+
