@@ -14,7 +14,13 @@ from dotenv import load_dotenv
 # Load local environment variables if available
 load_dotenv()
 
-from agent import DataAnalysisAgent, get_ollama_models, is_ollama_running
+from agent import (
+    DataAnalysisAgent,
+    get_ollama_models,
+    is_ollama_running,
+    get_groq_models,
+    get_xai_models,
+)
 from sample_data import generate_sample_ecommerce_data
 from executor import execute_analysis_code
 from eda import run_automated_eda
@@ -259,16 +265,23 @@ with st.sidebar:
     
     provider = st.selectbox(
         "AI Engine / Provider",
-        options=["Local (Ollama)", "Groq", "Google Gemini", "OpenAI", "LM Studio / Custom Local"],
+        options=[
+            "Local (Ollama) - Free & Offline",
+            "xAI Grok (console.x.ai)",
+            "Groq Cloud (console.groq.com)",
+            "Google Gemini",
+            "OpenAI",
+            "LM Studio / Custom Local"
+        ],
         index=0,
-        help="Select Local Ollama to run 100% free and offline without external API keys."
+        help="Select Local Ollama to run 100% free offline. Select xAI Grok or Groq Cloud for ultra-fast cloud performance."
     )
     
     api_key = ""
     model_choice = ""
     custom_url = ""
 
-    if provider == "Local (Ollama)":
+    if "Ollama" in provider:
         if ollama_active:
             st.markdown('<span class="badge-online">● Ollama Engine Connected</span>', unsafe_allow_html=True)
             installed_models = get_ollama_models()
@@ -285,8 +298,28 @@ with st.sidebar:
             model_choice = st.text_input("Model Name", value="qwen2.5-coder:1.5b")
             
         st.caption("🔒 100% Offline & Free • Zero data transmission")
+
+    elif "xAI Grok" in provider:
+        st.markdown('<span class="badge-online">● xAI Grok Frontier Engine</span>', unsafe_allow_html=True)
+        env_xai_key = os.getenv("XAI_API_KEY", "")
+        api_key = st.text_input(
+            "xAI Grok API Key",
+            value=env_xai_key,
+            type="password",
+            placeholder="xai-...",
+            help="Get your API key from https://console.x.ai"
+        )
+        if api_key:
+            clean_k = api_key.strip()
+            if clean_k.startswith("gsk_"):
+                st.warning("⚠️ That key begins with `gsk_`, which is a **Groq Cloud** key. Switch AI Engine to **Groq Cloud**.")
+            grok_models = get_xai_models(clean_k)
+        else:
+            grok_models = ["grok-2-latest", "grok-beta", "grok-2", "grok-vision-beta"]
+        model_choice = st.selectbox("Grok Model", options=grok_models, index=0)
+        st.caption("🚀 [Get an xAI Grok Key at console.x.ai](https://console.x.ai)")
             
-    elif provider == "Groq":
+    elif "Groq" in provider:
         st.markdown('<span class="badge-online">● Ultra-Fast Cloud LPUs</span>', unsafe_allow_html=True)
         env_groq_key = os.getenv("GROQ_API_KEY", "")
         api_key = st.text_input(
@@ -296,13 +329,17 @@ with st.sidebar:
             placeholder="gsk_...",
             help="Free API key from https://console.groq.com/keys"
         )
-        model_choice = st.selectbox(
-            "Groq Model",
-            options=["llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
-            index=0
-        )
+        if api_key:
+            clean_k = api_key.strip()
+            if clean_k.startswith("xai-"):
+                st.warning("⚠️ That key begins with `xai-`, which is an **xAI Grok** key from console.x.ai. Switch AI Engine above to **xAI Grok**!")
+            groq_models = get_groq_models(clean_k)
+        else:
+            groq_models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
+        model_choice = st.selectbox("Groq Model", options=groq_models, index=0)
+        st.caption("⚡ [Get a Free Groq Cloud Key at console.groq.com](https://console.groq.com/keys)")
         
-    elif provider == "Google Gemini":
+    elif "Gemini" in provider:
         st.markdown('<span class="badge-online">● Google AI Studio</span>', unsafe_allow_html=True)
         env_gemini_key = os.getenv("GEMINI_API_KEY", "")
         api_key = st.text_input(
@@ -317,8 +354,9 @@ with st.sidebar:
             options=["gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"],
             index=0
         )
+        st.caption("✨ [Get a Free Gemini Key](https://aistudio.google.com/app/apikey)")
 
-    elif provider == "OpenAI":
+    elif "OpenAI" in provider:
         env_openai_key = os.getenv("OPENAI_API_KEY", "")
         api_key = st.text_input(
             "OpenAI API Key",
@@ -332,7 +370,7 @@ with st.sidebar:
             index=1
         )
         
-    elif provider == "LM Studio / Custom Local":
+    elif "LM Studio" in provider or "Custom" in provider:
         custom_url = st.text_input("Base URL", value="http://localhost:1234/v1")
         model_choice = st.text_input("Model Name", value="local-model")
 
@@ -671,7 +709,7 @@ else:
         user_query = quick_prompt
 
     if user_query:
-        if provider != "Local (Ollama)" and provider != "LM Studio / Custom Local" and not api_key:
+        if not any(local_p in provider for local_p in ["Ollama", "LM Studio"]) and not api_key:
             st.error(f"Please provide your {provider} API key in the sidebar to proceed.")
             st.stop()
 

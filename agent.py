@@ -1,7 +1,6 @@
 """
 Multi-Provider Custom Coding Analysis Agent.
-Supports Local Ollama (100% Free & Offline, No API key needed),
-Groq, Google Gemini, OpenAI, and LM Studio / Custom Local models.
+Supports Local Ollama (100% Free & Offline), Groq, xAI Grok, Google Gemini, OpenAI, and LM Studio.
 Equipped with Plotly interactive charting, Scikit-Learn ML, and Data Transformation.
 """
 
@@ -35,6 +34,53 @@ def is_ollama_running(host: str = "http://localhost:11434") -> bool:
         return resp.status_code == 200
     except Exception:
         return False
+
+
+def get_groq_models(api_key: str) -> List[str]:
+    """Fetches currently active models available on the user's Groq account."""
+    default_models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768", "gemma2-9b-it"]
+    if not api_key:
+        return default_models
+    clean_key = api_key.strip()
+    try:
+        resp = requests.get(
+            "https://api.groq.com/openai/v1/models",
+            headers={"Authorization": f"Bearer {clean_key}"},
+            timeout=3.0
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            models = [
+                m["id"] for m in data.get("data", [])
+                if not any(k in m["id"].lower() for k in ["whisper", "guard", "embed", "safeguard"])
+            ]
+            if models:
+                return sorted(models)
+    except Exception:
+        pass
+    return default_models
+
+
+def get_xai_models(api_key: str) -> List[str]:
+    """Fetches currently active models available on the user's xAI Grok account."""
+    default_models = ["grok-2-latest", "grok-beta", "grok-2", "grok-vision-beta"]
+    if not api_key:
+        return default_models
+    clean_key = api_key.strip()
+    try:
+        resp = requests.get(
+            "https://api.x.ai/v1/models",
+            headers={"Authorization": f"Bearer {clean_key}"},
+            timeout=3.0
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            models = [m["id"] for m in data.get("data", [])]
+            if models:
+                return sorted(models)
+    except Exception:
+        pass
+    return default_models
 
 
 def get_dataframe_schema(df: pd.DataFrame) -> str:
@@ -82,23 +128,26 @@ class DataAnalysisAgent:
     ):
         self.provider = provider
         self.model = model
-        self.api_key = api_key
+        self.api_key = api_key.strip() if api_key else ""
         
-        if provider == "Local (Ollama)":
+        if "Ollama" in provider:
             base_url = custom_base_url or "http://localhost:11434/v1"
             self.client = OpenAI(base_url=base_url, api_key="ollama")
-        elif provider == "Groq":
-            self.client = Groq(api_key=api_key)
-        elif provider == "Google Gemini":
+        elif "xAI" in provider or ("Grok" in provider and "Groq" not in provider):
+            base_url = "https://api.x.ai/v1"
+            self.client = OpenAI(base_url=base_url, api_key=self.api_key)
+        elif "Groq" in provider:
+            self.client = Groq(api_key=self.api_key)
+        elif "Gemini" in provider:
             base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
-            self.client = OpenAI(base_url=base_url, api_key=api_key)
-        elif provider == "OpenAI":
-            self.client = OpenAI(api_key=api_key)
-        elif provider == "LM Studio / Custom Local":
+            self.client = OpenAI(base_url=base_url, api_key=self.api_key)
+        elif "OpenAI" in provider:
+            self.client = OpenAI(api_key=self.api_key)
+        elif "LM Studio" in provider or "Custom" in provider:
             base_url = custom_base_url or "http://localhost:1234/v1"
             self.client = OpenAI(base_url=base_url, api_key="lm-studio")
         else:
-            self.client = OpenAI(api_key=api_key or "dummy")
+            self.client = OpenAI(api_key=self.api_key or "dummy")
 
     def _extract_python_code(self, response_text: str) -> Optional[str]:
         """Extracts python code block from model response."""
@@ -266,4 +315,3 @@ Provide a clear, executive, well-structured answer to the user:
             "success": exec_result.success if exec_result else False,
             "attempts": attempts,
         }
-
